@@ -3,7 +3,7 @@ title: "Seasonal Variations and Vendor-Specific Strategies Influencing Price and
 subtitle: "Exploring Price and Sales Dynamics of Vanilla Ice Cream Across Vendors and Months"
 author: 
   - Chiyue Zhuang
-thanks: "Code and data are available at: [https://github.com/RohanAlexander/starter_folder](https://github.com/RohanAlexander/starter_folder)."
+thanks: "Code and data are available at: [https://github.com/cZhuang17/M-L_vanilla_ice_cream)."
 date: today
 date-format: long
 abstract: "This study examines pricing and sales patterns for vanilla ice cream, focusing on seasonal trends, vendor-specific strategies, and the relationship between old and current prices. Data analysis reveals that Metro employs a premium pricing strategy with higher average prices, while Loblaws offers lower and more consistent pricing. Seasonal patterns indicate peak prices during summer and early fall, reflecting demand-driven adjustments. Additionally, a strong correlation between old and current prices highlights systematic and proportional discounting strategies. These findings shed light on the interplay between pricing strategies and consumer behavior, providing insights valuable into consumer pricing dynamics and vendor approaches to market positioning."
@@ -82,6 +82,7 @@ The data for this study was systematically downloaded, cleaned, analyzed, modele
 # Load in data
 
 analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
 # Random sampling if needed
 set.seed(1123)
 sampled_aerial_data <- analysis_data %>%
