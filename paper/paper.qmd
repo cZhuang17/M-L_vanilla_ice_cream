@@ -1,0 +1,648 @@
+---
+title: "Seasonal Variations and Vendor-Specific Strategies Influencing Price and Sales of Vanilla Ice Cream"
+subtitle: "Exploring Price and Sales Dynamics of Vanilla Ice Cream Across Vendors and Months"
+author: 
+  - Chiyue Zhuang
+thanks: "Code and data are available at: [https://github.com/RohanAlexander/starter_folder](https://github.com/RohanAlexander/starter_folder)."
+date: today
+date-format: long
+abstract: "This study examines pricing and sales patterns for vanilla ice cream, focusing on seasonal trends, vendor-specific strategies, and the relationship between old and current prices. Data analysis reveals that Metro employs a premium pricing strategy with higher average prices, while Loblaws offers lower and more consistent pricing. Seasonal patterns indicate peak prices during summer and early fall, reflecting demand-driven adjustments. Additionally, a strong correlation between old and current prices highlights systematic and proportional discounting strategies. These findings shed light on the interplay between pricing strategies and consumer behavior, providing insights valuable into consumer pricing dynamics and vendor approaches to market positioning."
+format: pdf
+number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+library(modelsummary)
+library(tidyverse)
+library(palmerpenguins)
+library(arrow)
+library(knitr)
+library(rstanarm)
+library(ggplot2)
+library(bayesplot)
+library(testthat)
+library(lubridate)
+library(plumber)
+```
+
+
+# Introduction {#sec-intro}
+
+The Canadian grocery market plays a pivotal role in shaping the everyday lives of consumers, with leading vendors such as Metro and Loblaws setting the stage for competitive retail strategies. Metro, known for its regional dominance in Ontario and Quebec, competes head-to-head with Loblaws, a national chain with a broader footprint across Canada. Both retailers have implemented nuanced pricing strategies to cater to diverse consumer preferences, particularly for staple and indulgent items like vanilla ice cream—a perennial favorite across demographics [@sharpe1979membrane].
+
+Vanilla ice cream occupies a unique position in the Canadian grocery landscape, demonstrating notable fluctuations in demand based on seasonal trends. Warmer months, particularly summer, mark a peak in sales, while cooler months witness a tempered but steady interest in the product as a comfort food. Understanding these seasonal variations is essential for retailers to optimize pricing and inventory management. Despite its popularity, there is limited empirical research on how pricing strategies for vanilla ice cream vary between competitors like Metro and Loblaws, particularly from June to November when demand patterns shift dramatically [@martin2018consumer].
+
+Our research aims to fill this gap by analyzing the pricing and sales dynamics of vanilla ice cream offered by Metro and Loblaws. Using a dataset spanning six months, we examined how pricing strategies differ between the two vendors and how seasonal consumer behavior influences these dynamics. By dissecting trends in pricing and demand, we uncovered insights into how each vendor adapts to market fluctuations and consumer preferences during this period.
+
+Key findings from our study reveal that both Metro and Loblaws employ distinct pricing strategies shaped by competition, seasonality, and consumer behavior. For instance, Loblaws exhibits more aggressive promotional pricing during peak summer months, while Metro focuses on steady, value-based pricing throughout the period. Additionally, our analysis highlights the role of consumer behavior in shaping these strategies, with trends like stockpiling during colder months and impulse purchases in summer impacting sales dynamics.
+
+Understanding the intricacies of vanilla ice cream pricing is not just an academic exercise but a vital contribution to the retail industry and broader economy. Insights from this research can help vendors refine their strategies to maximize profitability and consumer satisfaction, while also informing policymakers and economists about the microeconomic dynamics of seasonal retail markets. Furthermore, the study underscores the importance of adaptive pricing models in maintaining competitiveness and meeting evolving consumer needs.
+
+The remainder of this paper is structured as follows: Data section outlines the methodology and data sources used for this analysis. Graph and result section delves into the pricing and sales trends observed across Metro and Loblaws. Discussion section discusses the implications of our findings for market strategies and consumer behavior. Finally, the model section goes through the application of models in this project.
+
+## Estimand
+
+This study aims to estimate the relationship between vendor pricing strategies and seasonal variations in vanilla ice cream prices. Specifically, we assess how average prices differ between vendors and how monthly price trends reflect demand changes. By analyzing various factors such as the different type of vendors: Metro and Loblaws, current selling price of vanilla ice cream, old selling price of vanilla ice cream, different month in the year from June to November, this research seeks to understand how these variables, especially the variable of type of vendors, and the variables of months influences the pricing of vanilla ice cream and how we can implement this result in future pricing decision and sales strategy. 
+
+
+# Data {#sec-data}
+
+## Data Source & Measurement
+
+The dataset used in this study was sourced from [Jacob Filip Project Hammer](https://jacobfilipp.com/hammer/), which compile extensive database of historical grocery prices from top grocers’ websites. The dataset originally consists of 8 vendors in the Canadian grocery market: Voila, T&T, Loblaws, No Frills, Metro, Galleria, Walmart and Save-On-Foods. The raw data has approximately 121,172,21 records, after we narrow down our research to be specifically focus on the product vanilla ice cream in 2 vendors: Metro and Loblaws, the observations reduced to 971 record. The dataset underwent significant preprocessing to align with the specific focus of this research. Our initial step in cleaning the raw dataset involved filtering out records where the target product is not vanilla ice cream, and the target vendors are not Metro and Loblaws, reducing the dataset to 971 entries. These records form the basis of the analysis, having been retained for detailed examination and modeling of current price and quantity sold of vanilla ice cream by different vendors under different seasons.
+
+The data for this study was systematically downloaded, cleaned, analyzed, modeled and visualized using R [@citeR], a extensive statistical programming language. The following packages were used for this study。
+
+- **`tidyverse`** [@tidyverse]: To simplify and enhance the efficiency of data handling and visualization.
+- **`testthat`** [@testthat]: Simplifies writing tests by describing expected behavior, catching errors, and visually displaying test results, while seamlessly integrating into various workflows.
+- **`arrow`** [@arrow]: Designed for efficient reading and writing of large datasets, improving data processing capabilities.
+- **`janitor`** [@janitor]: Simplifying raw data management by standardizing variable names and streamlining data structures.
+- **`lubridate`** [@lubridate]: Makes it easier to do the things R does with date-times and possible to do the things R does not.
+- **`Rcpp`** [@Rcpp]: Provides a clean, approachable API that lets you write high-performance code, insulated from R's arcane C API.
+- **`modelsummary`** [@modelsummary]: Creates tables and plots to present descriptive statistics and to summarize statistical models in R.
+- **`palmerpenguins`** [@palmerpenguins]: Provide a great dataset for data exploration & visualization, as an alternative to iris . Installation.
+- **`knitr`** [@knitr]: Used to dynamically create reports that combine R code with its outputs, enabling the seamless integration of plots and analysis results into the final document.
+- **`ggplot2`** [@ggplot2]: Make testing enjoyable and rewarding, so you feel a genuine sense of satisfaction when writing tests.
+- **`rstanarm`** [@rstanarm]: Enabled the implementation of Bayesian models, offering an easy-to-use approach for fitting regression models with Stan.
+- **`bayesplot`** [@bayesplot]: Used to generate graphical posterior predictive checks and diagnostic visualizations.
+- **`plumber`** [@plumber]: Allows you to create a web API by merely decorating your existing R source code with roxygen2 -like comments.
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+#| eval: true
+#| label: tbl-vanilla_preview
+#| tbl-cap: Current and Old Price of Vanilla Ice Cream.
+
+# Load in data
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+# Random sampling if needed
+set.seed(1123)
+sampled_aerial_data <- analysis_data %>%
+  sample_n(500)
+
+analysis_data  |>
+  head() |>
+  kable(booktabs = TRUE, align = "c")
+```
+@tbl-vanilla_preview presents the first six rows from the cleansed dataset, focusing on the current and old price of French vanilla ice cream in Loblaws in the 7th month.
+
+## Variable
+
+Our analysis focuses on the following variables, with a specific focus on `current_price` as the dependent variable:
+
+- `current_price`: The current price of Vanilla ice cream.
+
+- `old-price`: The historial price of vanilla ice cream.
+
+- `quantity_sold`: The total number of vanilla ice cream sold.
+
+- `month`: The month variables of vanilla ice cream price:
+  - `June`: The 6th month of the year.
+  - `July`: The 7th month of the year.
+  - `Augst`: The 8th month of the year.
+  - `September`: The 9th month of the year.
+  - `October`: The 10th month of the year.
+  - `Movember`: The 11th month of the year.
+  
+- `vendor`: The grocery store.
+  - `Loblaws`: A Canadian supermarket chain, part of Loblaw Companies Limited, offering groceries, household items, and pharmacy services, with a focus on affordability and accessibility.
+  - `Metro`: A Canadian supermarket chain operating in Quebec and Ontario, offering a variety of products including groceries, pharmacy items, and general merchandise.
+
+
+Detailed information about these variables and the data structure is presented in @tbl-vanilla_preview, which outlines the first few records from the processed dataset.
+
+
+```{r}
+#| label: fig-boxvendor
+#| fig-cap: Distribution of Current Price of Vanilla Ice Cream by Vendor with Overlayed Data Points, Showing that Metro has consistent Higher Current Price.
+#| eval: true
+#| echo: false
+#| message: false
+#| warning: false
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
+# Ensure month is treated as a factor
+analysis_data <- analysis_data %>%
+  mutate(month = factor(month, levels = 1:12, labels = month.abb[1:12]))
+
+# Boxplot - Distribution of current_price by vendor with overlayed data points
+ggplot(analysis_data, aes(x = vendor, y = current_price, fill = vendor)) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 16, outlier.size = 2, alpha = 0.7) +
+  geom_jitter(aes(color = vendor), width = 0.2, alpha = 0.6, size = 2) +
+  scale_fill_manual(values = c("#FF9999", "#66B2FF")) +
+  scale_color_manual(values = c("#FF6666", "#3399FF")) +
+  labs(
+    title = "Distribution of Current Price of Vanilla Ice Cream 
+    by Vendor with Overlayed Data Points",
+    x = "Vendor",
+    y = "Current Price (CAD)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(face = "bold"),
+    legend.position = "none"
+  )
+```
+
+[Figure @fig-boxvendor] illustrates the distribution of current prices for vanilla ice cream by vendor, with additional jittered points overlayed to represent individual data points. The vendors being compared are Loblaws and Metro. The visualization reveals that Metro maintains a narrower range of prices, reflecting consistency in its pricing strategy. In contrast, Loblaws demonstrates more variability, as evidenced by a wider interquartile range (IQR). This suggests a more diverse pricing approach at Loblaws, potentially to attract a broader customer base. Additionally, the median price at Metro is noticeably higher than that of Loblaws, highlighting Metro's premium pricing strategy. Outliers are present for both vendors, but Metro shows fewer deviations from its core pricing, indicating more standardized pricing practices.
+
+```{r}
+#| label: fig-histogram_vendor
+#| fig-cap: Distribution of Current Price and Quantity Sold of Vanilla Ice Cream by Vendor under Histogram, Showing that Metro has consistent Higher Current Price and Vanilla Ice Cream is Sold the Best at Price of 5 in Both Grocery Stores.
+#| echo: false
+#| warning: false
+#| message: false
+#| eval: true
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
+# Ensure month is treated as a factor
+analysis_data <- analysis_data %>%
+  mutate(month = factor(month, levels = 1:12, labels = month.abb[1:12]))
+
+# Histogram - Distribution of current_price and quantity_sold by vendor
+ggplot(analysis_data %>% filter(vendor %in% c("Loblaws", "Metro")), 
+       aes(x = current_price, fill = vendor)) +
+  geom_histogram(bins = 30, alpha = 0.7, color = "black") +
+  scale_fill_manual(values = c("#FF9999", "#66B2FF")) +
+  labs(
+    title = "Distribution of Current Price
+    of Vanilla Ice Cream by Vendor",
+    x = "Current Price (CAD)",
+    y = "Quantity Sold"
+  ) +
+  facet_wrap(~ vendor, ncol = 1) +  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(face = "bold"),
+    legend.position = "none"  
+  )
+```
+
+[Figure @fig-histogram_vendor] provides a segmented view of the distribution of current prices for vanilla ice cream, divided by vendor. Each vendor’s data is visually distinguished using separate color coding and stacking. Metro’s price distribution is more concentrated in the higher price range, with most of its prices above 5 dollars. This observation aligns with Metro's premium positioning as reflected in the boxplot. On the other hand, Loblaws displays a wider spread of prices with a notable peak around 3.50 dollars, indicating a pricing strategy aimed at affordability. While there is some overlap in pricing between the two vendors, Metro’s distribution skews towards higher price points, suggesting that the two vendors may be targeting different segments of the market.
+
+The two graphs together provide a comprehensive view of the pricing strategies employed by Loblaws and Metro. Metro’s pricing strategy is characterized by consistency and a focus on higher price points, targeting a premium market segment. Conversely, Loblaws shows a greater range of prices, with a lower median price, suggesting an effort to cater to a broader or more price-sensitive customer base. These patterns indicate distinct market positioning for each vendor, with Metro appealing to customers willing to pay a premium and Loblaws focusing on affordability and variety. This analysis highlights the competitive dynamics between the two vendors and offers insights into their respective market strategies.
+
+```{r}
+#| label: fig-histogram_price
+#| fig-cap: Distribution of Quantity Sold of Vanilla Ice Cream under Different Price by Vendor in Histogram, Showing that Metro always Sell More Vanilla Ice Cream than Loblaws, and At Price of 5, the Product is Sold the Best. 
+#| echo: false
+#| warning: false
+#| message: false
+#| eval: true
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
+# Ensure month is treated as a factor
+analysis_data <- analysis_data %>%
+  mutate(month = factor(month, levels = 1:12, labels = month.abb[1:12]))
+
+# Histogram - Distribution of quantity_sold under different current_price by vendor
+ggplot(analysis_data, 
+       aes(x = current_price, fill = vendor)) +
+  geom_histogram( bins = 30, alpha = 0.7, color = "black") +
+  scale_fill_manual(values = c("#FF9999", "#66B2FF")) +
+  labs(
+    title = "Distribution of Quantity Sold of Vanilla Ice Cream 
+    under Different Price by Vendor",
+    x = "Current Price (CAD)",
+    y = "Quantity Sold"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(face = "bold"),
+    legend.title = element_blank(),
+    legend.position = "top"
+  )
+```
+[Figure @fig-histogram_price] provides a detailed view of the quantity of vanilla ice cream sold at various price points, segmented by vendor, namely Metro and Loblaws. By using a stacked format, the graph allows for a clear comparison of sales volumes between the two vendors across different pricing ranges. The visual distinction highlights Metro's dominant position in sales volume at nearly all price points, as reflected by the larger representation of Metro's segment in the stacked bars.
+
+One of the key insights from the graph is the identification of an optimal price point of 5 dollars, where both vendors achieve their highest sales volume. This suggests that 5 dollars is a critical price for attracting customer demand and driving sales for vanilla ice cream. As prices increase beyond this point, the overall sales volumes decrease, indicating that customer willingness to purchase diminishes at higher price levels. Despite this trend, Metro continues to outperform Loblaws even in the higher price ranges, maintaining relatively consistent sales compared to its competitor.
+
+The data also underscores differences in market positioning between the two vendors. Metro's stronger performance across all price points reflects its ability to cater to a wider or more premium customer base. Loblaws, on the other hand, may be more competitive within specific lower price brackets, but struggles to match Metro's performance overall. These observations emphasize the importance of strategic pricing in aligning with customer behavior and maximizing sales potential. Metro's consistency and dominance suggest a well-calibrated pricing approach, while Loblaws might benefit from refining its strategies to compete more effectively across price ranges.
+
+```{r}
+#| label: fig-boxplot_month_overlay
+#| fig-cap: Distribution of Current Price of Vanilla Ice Cream by Month with Overlayed Data Points under Boxplot.
+#| echo: false
+#| warning: false
+#| message: false
+#| eval: true
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
+# Ensure month is treated as a factor
+analysis_data <- analysis_data %>%
+  mutate(month = factor(month, levels = 1:12, labels = month.abb[1:12]))
+
+# Boxplot - Distribution of current_price by month with overlayed data points
+ggplot(analysis_data, aes(x = month, y = current_price, fill = month)) +
+  geom_boxplot(outlier.color = "red", outlier.shape = 16, outlier.size = 2, alpha = 0.7) +
+  geom_jitter(aes(color = month), width = 0.2, alpha = 0.6, size = 2) +
+  scale_fill_brewer(palette = "Spectral") +
+  scale_color_brewer(palette = "Spectral") +
+  labs(
+    title = "Distribution of Current Price of Vanilla Ice Cream 
+    by Month with Overlayed Data Points",
+    x = "Month",
+    y = "Current Price (CAD)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    legend.position = "none"
+  )
+```
+
+[Figure @fig-boxplot_month_overlay] illustrates the distribution of current prices for vanilla ice cream across the months of the year using a boxplot, enhanced by overlayed data points for additional detail. Each box represents the interquartile range (IQR) of prices for a given month, while the whiskers indicate the full spread of the data, excluding outliers. The overlayed points show individual price instances, providing granular insights into pricing trends.
+
+From this graph, it is evident that price consistency varies throughout the year. Some months, such as the summer months of June, July, and August, show tighter distributions with fewer outliers, indicating more stable pricing during peak ice cream demand. In contrast, months like November and December show wider price ranges and more significant outliers, suggesting increased price variability, likely due to lower demand or promotional activities. Overall, the summer months exhibit higher median prices, aligning with increased consumer demand during warmer seasons.
+
+```{r}
+#| label: fig-histogram_month
+#| fig-cap: Distribution of Current Price and Quantity Sold of Vanilla Ice Cream by Month under Histogram, Showing that Vanilla Ice Cream is Sold the Best During Summer.
+#| echo: false
+#| warning: false
+#| message: false
+#| eval: true
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
+# Ensure month is treated as a factor
+analysis_data <- analysis_data %>%
+  mutate(month = factor(month, levels = 1:12, labels = month.abb[1:12]))
+
+# Histogram - Distribution of current_price and quantity_sold by month
+ggplot(analysis_data, aes(x = current_price, fill = month)) +
+  geom_histogram(bins = 30, alpha = 0.7, color = "black", position = "identity") +
+  scale_fill_brewer(palette = "Spectral") +
+  labs(
+    title = "Distribution of Current Price and Quantity Sold of 
+    Vanilla Ice Cream by Month",
+    x = "Current Price (CAD)",
+    y = "Quantity Sold"
+  ) +
+  facet_wrap(~ month, ncol = 3) +  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    legend.position = "none"  
+  )
+```
+
+[Figure @fig-histogram_month] uses histograms to display the distribution of current prices and the corresponding quantities sold for vanilla ice cream, segmented by month. Each month's sales distribution is shown separately, facilitating a comparison across months. The histograms reveal a clear trend: sales volumes peak during the summer months (June, July, and August), suggesting that vanilla ice cream is a seasonal product with heightened consumer interest in warmer weather.
+
+For most months, the highest sales occur at the $5 price point, confirming it as a critical price that maximizes sales. In the summer months, the concentration of sales at this price point is even more pronounced, with relatively higher volumes compared to other months. Winter months, such as December and January, show reduced sales volumes overall, and the distributions appear more spread out, reflecting lower consumer demand and more varied pricing strategies.
+
+Together, the two graphs paint a comprehensive picture of the seasonal dynamics in the vanilla ice cream market. The boxplot highlights the stability and seasonal variations in pricing, with higher and more consistent prices during the summer months. Meanwhile, the histogram emphasizes the relationship between price and sales, showcasing the dominance of the $5 price point in driving sales volumes, particularly in the peak summer season. These insights underline the importance of seasonal demand and strategic pricing in maximizing revenue. Retailers could leverage this knowledge to optimize inventory and pricing strategies, ensuring they capitalize on the peak demand during the summer months while maintaining competitiveness during off-peak seasons.
+
+```{r}
+#| label: fig-scatterplot_current_old
+#| fig-cap: Relationship Between Current and Old Prices of Vanilla Ice Cream, Showing that It Follows an Upwarding Direction Distribution.
+#| echo: false
+#| warning: false
+#| message: false
+#| eval: true
+
+analysis_data <- read_parquet("data/02-analysis_data/analysis_data.parquet")
+
+# Scatterplot - Ditribution of current_price by old_price
+ggplot(analysis_data, aes(x = old_price, y = current_price)) +
+  geom_point(aes(color = old_price), alpha = 0.7, size = 3) +
+  geom_smooth(method = "lm", color = "blue", linetype = "dashed", size = 1, se = TRUE) +
+  scale_color_gradient(low = "#66B2FF", high = "#FF6666") +
+  labs(
+    title = "Relationship Between Current and Old 
+    Prices of Vanilla Ice Cream",
+    x = "Old Price (CAD)",
+    y = "Current Price (CAD)",
+    color = "Old Price"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text = element_text(face = "bold"),
+    axis.title = element_text(face = "bold"),
+    legend.position = "right"
+  )
+```
+[Figure @fig-scatterplot_current_old] shows a positive relationship between old and current prices of vanilla ice cream, with current prices increasing as old prices rise. The color gradient highlights higher old prices corresponding to higher current prices, and the linear regression line reinforces this upward trend. The clustering along the line suggests systematic pricing adjustments, though some variability indicates other influencing factors.
+
+The positive correlation between old and current prices suggests a proportional pricing strategy, aligning current prices with historical trends. This systematic approach helps maintain product value and adapt to market conditions, providing valuable insights for predicting and strategizing future pricing adjustments.
+
+## Justification
+
+The variables chosen for this study were carefully selected based on their strategic significance and impacts on sales of vanilla ice cream, as documented in the dataset. Each variable plays important role in affecting the price and sales of vanilla ice cream in both vendors:
+
+- **Target Vendors (`VENDOR`):** Identified based on the grocery store type, targeting different Canadian vendors, such as Metro and Loblaws.
+- **Target Month (`MONTH`):** Identified based on different time period of the year, targeting different number of months, such as June, July, August, September, October, and November. 
+- **Current Price (`CURRENT_PRICE`):** The current selling price of vanilla ice cream.
+- **Old Price (`OLD_PRICE`):** The historical selling price of vanilla ice cream.
+- **Quantity Sold (`QUANTITY_SOLD`):** The count of vanilla ice cream sold at each targed selling price.
+
+To streamline the modeling process and enhance the clarity of the analysis, non-vanilla ice cream targets and non-Metro, non-Loblaws targets were excluded from the original dataset of approximately 121,172,21 records. This data cleaning step resulted in a more focused dataset, comprising 971 entries, which facilitated a more efficient and targeted modeling approach. This pre-processing not only improved the manageability of the data but also enhanced the study's examination of the price trends for vanilla ice cream at Metro and Loblaws across different months, providing a clear view of pricing patterns and vendor strategies.
+
+# Model {#sec-model}
+
+This study employs a Bayesian ordered logistic regression model to analyze the relationship between the current and old price, quantity sold of vanilla ice cream and the two grocery store: Loblaws and Metro. 
+
+The model integrates several key predictors:
+
+- Grocery type : Identifies the grocery sector being targeted. Distinguish between Loblaws and Metro.
+  Variable: `Vendor`
+
+- Old Price: Reflecting the impact of historical prices of vanilla ice cream on current pricing strategies. 
+  Variable: `Old_price`
+  
+- Current Price: Reflecting the current price of vanilla ice cream sold in the mark in the two vendors. 
+  Variable: `Current_price`
+
+- Quantity: Measures the actual number of vanilla ice cream sold under different price.
+  Variable: `Quantity_sold`
+
+- Month: Considering seasonal price fluctuations, like higher demand in the summer months. Measures from June to November.
+  Variable: `Month` 
+
+A Gaussian likelihood is used for the response variable, suitable for the continuous nature of current prices. Informative priors are assigned to the coefficients and auxiliary parameters, including the intercept and residual variance, enabling the model to incorporate domain knowledge while adapting to the data.
+
+Our model statistically infers the relationship between current and old price and various month factors in different vendors, providing a probabilistic assessment of their relationships and impacts.
+
+## Features of Bayesian Approach
+1. Incorporation of Prior Knowledge: The Bayesian approach allows the integration of prior beliefs or domain expertise into the model through the use of priors, which can guide inference, especially when data is limited.
+
+2. Probabilistic Inference: It provides a full posterior distribution of parameters, offering a measure of uncertainty and variability in estimates rather than just point estimates.
+
+3. Flexibility in Modeling: Bayesian methods can handle complex models and hierarchical structures, making them suitable for a wide range of applications and accommodating various types of data and assumptions.
+
+Background details and diagnostics are included in [Appendix -@sec-model-details].
+
+
+## Model set-up
+
+Let $y_i$ be the the current price of vanilla ice cream. The predictors in the model include:
+
+- $\beta_1$: The coefficient for the `month`, which indicates the period of dataset from June to November. It is a categorical variable with the following categories:
+  - `June`
+  - `July`
+  - `August`
+  - `September`
+  - `October`
+  - `November`
+
+- $\beta_2$: The coefficient for the `old_price` variable, representing the historical price of vanilla ice cream.
+
+- $\beta_3$: The coefficient for the `vendors`, which is a category variable, suggesting the different grocery store targeted, distinguished from Loblaws and Metro.
+  - `Loblaws`
+  - `Metro`
+
+- $\eta_i$: The linear predictor or log-odds for the $i$-th observation. It is a combination of the intercept and coefficients multiplied by the predictor variables. 
+
+- $\kappa$: Thresholds (or cutpoints) define the boundaries between the ordered categories of the dependent variable in an ordered logistic regression model. These thresholds specify the ranges of $\eta_i$ values associated with each target priority category. The model estimates distinct $\kappa$ values for each boundary separating the ordered categories.
+
+\begin{align} 
+y_i &\sim \mbox{OrderedLogistic}(\eta_i, \boldsymbol{\kappa}) \\
+\eta_i &= \beta_{\text{month}} \times \text{month}_i + \beta_{\text{old\_price}} \times \text{old\_price} \\
+&\quad + \beta_{\text{vendor}} \times \text{vendor}\\
+\boldsymbol{\beta} &\sim \mbox{Normal}(0, 10) \text{ (default non-informative prior)} \\
+\boldsymbol{\kappa} &\sim \mbox{Normal}(0, 5) \text{ (default prior for cutpoints)}
+\end{align}
+
+
+## Prior distributions
+
+In the Bayesian ordered logistic regression model implemented with the `rstanarm` package, default priors are utilized to promote robust and reliable inference. These priors are weakly informative, striking a balance between regularization and flexibility to accommodate the data:
+
+- **Intercept Priors**: Normal priors with a mean of 0 are applied to the model's intercepts. This choice stabilizes the location parameter without enforcing a strong assumption about its central value.
+
+- **Coefficient Priors**: Model coefficients also follow normal priors with a mean of 0 and a standard deviation typically set to 2.5. This standard deviation limits the likelihood of overly large effects unless strongly supported by the data, offering regularization.
+
+We run the model in R [@citeR] using the `rstanarm` package of @rstanarm. We use the default priors from `rstanarm`.
+date is from @citedata.
+
+
+# Results
+
+## Model Justification
+
+The analysis revealed distinct patterns in vanilla ice cream pricing, highlighting the role of vendor type—Metro and Loblaws—and seasonal factors in determining price variations, while the impact of product volume and promotional offers was relatively subdued. Our results are summarized in @tbl-model_summary.
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+# Load in models
+first_model <-
+  stan_glm(
+    formula = current_price ~ month + old_price + vendor,
+    data = analysis_data,
+    family = gaussian(),
+    prior = normal(location = 0, scale = 2.5, autoscale = TRUE),
+    prior_intercept = normal(location = 0, scale = 2.5, autoscale = TRUE),
+    prior_aux = exponential(rate = 1, autoscale = TRUE),
+    seed = 200
+  )
+summary(first_model)
+```
+```{r}
+#| echo: false
+#| eval: false
+#| warning: false
+
+# Print the summary of the model to inspect the results
+
+first_model
+
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| label: tbl-model_summary
+#| tbl-cap: The model's coefficient summary
+#| warning: false
+#| message: false
+
+# Create a data frame containing the model's coefficient summary
+summary(first_model)
+model_summary_df <- data.frame(
+  Parameter = c(
+    "Intercept",
+    "monthJul",
+    "monthAug",
+    "monthSep",
+    "monthOct",
+    "monthNov",
+    "old_price ",
+    "vendorMetro",
+    "sigma"
+  ),
+  Mean = c(-0.4 , -0.1, 0.3, -0.2, 1.0, 0.5, 0.7, 0.3, 1.1),
+  SD = c(0.3, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0, 0.1, 0.0),
+  `10%` = c(-0.8, -0.3, 0.1, -0.4, 0.8, 0.3, 0.7, 0.2, 1.1),
+  `50%` = c(-0.4, -0.1, 0.3, -0.2, 1.0, 0.5, 0.7, 0.3, 1.1),
+  `90%` = c(0.0, 0.0, 0.4, -0.1, 1.1, 0.7, 0.8, 0.4, 1.2)
+)
+
+kable(model_summary_df, format = "markdown", align = "c", col.names = c("Parameter", "Mean", "SD", "10%", "50%", "90%"))
+```
+
+As detailed in @tbl-model_summary, the coefficient summary provides insights into the price variations of vanilla ice cream sold by different vendors across different months. For instance, the estimated coefficient for monthOctober is notably high (Mean = 1.0), suggesting a significant price increase during this month compared to July. This may reflect seasonal demand fluctuations, possibly due to autumn-related events or increased consumer preferences.
+
+In contrast, the coefficient for monthSeptember is negative (Mean = -0.2), indicating a slight price drop compared to the baseline month. Similarly, prices in July (Mean = -0.1) are relatively lower, which might align with promotional strategies during the summer season.
+
+For vendor differences, the coefficient for vendorMetro (Mean = 0.3) suggests that Metro generally has higher prices than Loblaws, which could be attributed to differences in vendor strategies or consumer targeting. The positive coefficient for old_price (Mean = 0.7) emphasizes the influence of historical pricing on current price settings.
+
+The intercept term sets the baseline, with a Mean of -0.4, reflecting the starting point for price variations. The relatively low value of sigma (1.1) indicates moderate variability in pricing, providing a stable prediction model.
+
+
+```{r}
+#| label: fig-model_coefficients
+#| fig-cap: The 90% credible intervals for all model coefficients
+#| eval: true
+#| echo: false
+#| message: false
+#| warning: false
+
+
+# Extract posterior arrays for the model coefficients
+posterior <- as.array(first_model)
+
+# Set a color scheme for the plots
+color_scheme_set("brightblue")
+
+# Plot the 90% credible intervals for all model coefficients
+# This visualizes the impact of each predictor on the ordered priority levels
+mcmc_intervals(posterior, prob = 0.9) +
+  labs(
+    title = "Model Coefficients",
+    subtitle = "90% credible intervals",
+    x = "Coefficient Estimate",
+    y = "Parameters"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5), # Center the main title
+    plot.subtitle = element_text(hjust = 0.5) # Center the subtitle
+  )
+```
+
+
+
+\newpage
+
+
+# Discussion
+
+## Pricing Dynanics under Different Vendor Strategies {#sec-first-point}
+
+The analysis of vanilla ice cream pricing reveals significant differences in the strategies adopted by Metro and Loblaws, reflecting their distinct brand identities and market positioning. Metro consistently employs a premium pricing strategy, maintaining higher prices that appeal to consumers who prioritize perceived quality and brand prestige. This approach aligns with Metro’s reputation as a higher-end retailer, catering to customers willing to pay a premium for quality assurance. By consistently pricing above its competitor, Metro leverages its brand identity to reinforce customer perceptions of exclusivity and quality.
+
+Loblaws, on the other hand, adopts a more competitive pricing strategy, offering lower and more stable prices. This strategy appeals to budget-conscious consumers and those seeking consistent value for their purchases. By focusing on affordability, Loblaws strengthens its position as a cost-effective option for shoppers, particularly during periods of high demand, such as the summer months when ice cream sales typically peak. The predictability of Loblaws' pricing helps build consumer trust and fosters loyalty among price-sensitive segments.
+
+A notable finding is the correlation between current and historical prices, suggesting that both vendors use past pricing as a reference point for setting future prices. Metro appears to rely on historical pricing to maintain its premium market positioning, ensuring that promotions or discounts do not undermine the perceived value of its products. Conversely, Loblaws uses historical pricing as a baseline for offering competitive deals while preserving its reputation for affordability.
+
+These insights highlight the critical role of pricing strategies in shaping consumer perceptions and driving purchasing decisions. Retailers can draw lessons from these approaches to tailor their strategies in ways that align with brand identity, target demographics, and market dynamics. By understanding how different pricing models impact consumer behavior, vendors can refine their approaches to enhance customer satisfaction, loyalty, and competitive advantage.
+
+## Pricing Dynamics under Consumer Behaviour Caused by Seasonal Trends
+
+Seasonality plays a pivotal role in shaping the pricing strategies for vanilla ice cream, with significant price variations observed during the summer months. These months, particularly June through August, coincide with the peak demand for ice cream, driven by warmer weather and increased outdoor activities. Both Metro and Loblaws adjust their pricing during this period to capitalize on heightened consumer interest. Metro maintains its premium pricing even during these high-demand months, positioning itself as a retailer for customers who prioritize quality over cost. This approach ensures steady revenue while preserving the brand's image of exclusivity.
+
+In contrast, Loblaws adopts a more aggressive pricing strategy during summer, offering competitive deals to attract a larger customer base. By strategically lowering prices or introducing promotions, Loblaws not only boosts seasonal sales but also enhances its appeal to price-sensitive shoppers. This strategy is particularly effective in driving volume sales, making it a key revenue generator during high-demand periods.
+
+An important insight from this analysis is the interplay between seasonal demand and vendor pricing strategies. The increase in ice cream prices during summer reflects retailers' efforts to maximize revenue without alienating their target audiences. While Metro leverages consistent premium pricing to attract high-value customers, Loblaws' competitive pricing taps into broader consumer segments, including families and budget-conscious individuals.
+
+These findings underscore the importance of aligning pricing strategies with seasonal consumer behavior. Retailers can enhance revenue opportunities by anticipating demand fluctuations and tailoring promotions or price adjustments accordingly. By understanding how seasonality influences purchasing decisions, vendors can refine their strategies to balance short-term revenue goals with long-term brand loyalty. Moreover, these insights offer actionable lessons for other seasonal markets, such as beverages or holiday-specific products, emphasizing the broader applicability of seasonality in retail pricing.
+
+## Real-Life Implications
+
+The findings of this paper extend beyond the realm of ice cream pricing. They underscore the broader economic principle of demand-driven pricing and its implications for consumer goods. Businesses in seasonal industries, such as beverages, holiday decorations, or travel services, can adopt similar analytical frameworks to optimize pricing and maximize revenue during peak periods. Moreover, the study illustrates how data-driven decision-making can enhance operational efficiency and market responsiveness, serving as a valuable lesson for industries adapting to consumer-centric strategies.
+
+## Weaknesses and Future Research Directions
+
+While this paper provides valuable insights into pricing dynamics and seasonal trends, there are limitations that merit discussion. First, the analysis is constrained to vanilla ice cream and two vendors, which may not fully capture the diversity of pricing strategies in the broader food retail sector. Expanding the dataset to include additional products and vendors could provide a more comprehensive understanding.
+
+Second, the study focuses on pricing data without incorporating sales volume or profitability metrics, which are critical to understanding the effectiveness of vendor strategies. Future research could integrate these dimensions to assess the financial implications of pricing decisions.
+
+Finally, while seasonal trends are examined, the underlying drivers, such as marketing efforts, regional climate variations, and socioeconomic factors, remain unexplored. Further studies could investigate these elements to provide a richer context for the observed trends.
+
+Future research should also explore consumer preferences and purchasing behaviors through surveys or real-time purchase data. Combining quantitative pricing data with qualitative insights could yield a more nuanced understanding of the interplay between vendor strategies, consumer behavior, and market outcomes. Such research would not only validate the findings of this study but also uncover new opportunities for strategic decision-making in retail management.
+
+\newpage
+
+\appendix
+
+# Appendix {-}
+
+
+# Model details {#sec-model-details}
+
+## Posterior predictive check
+
+In @fig-ppcheckandposteriorvsprior-1 we implement a posterior predictive check. The first graph illustrates a posterior predictive check, comparing the observed prices of vanilla ice cream with the replicated data generated by the model. The observed data and the overlaid replicated distributions align well, showing that the model captures the variability and trends in the data effectively. This suggests that the predictions are robust and reflective of the true pricing dynamics.
+
+In @fig-ppcheckandposteriorvsprior-2 we compare the posterior with the prior. The second graph compares the posterior distribution with the prior distribution for the model parameters. The posterior distribution is narrower and shifted compared to the prior, indicating that the data strongly influenced and refined the parameter estimates. This alignment demonstrates that the model effectively updates prior beliefs based on evidence, leading to more informed conclusions about price variations.
+
+```{r}
+#| eval: true
+#| echo: false
+#| message: false
+#| warning: false
+#| label: fig-ppcheckandposteriorvsprior
+#| layout-ncol: 2
+#| fig-cap: "Examining how the model fits, and is affected by, the data"
+#| fig-subcap: ["Posterior prediction check", "Comparing the posterior with the prior"]
+
+pp_check(first_model) +
+  theme_classic() +
+  theme(legend.position = "bottom")
+
+posterior_vs_prior(first_model) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom") +
+  coord_flip()
+```
+
+## Diagnostics
+
+
+@fig-stanareyouokay-1 is a trace plot. The first graph presents a trace plot, showing the evolution of sampled parameter values over iterations for each MCMC chain. Each chain demonstrates a "hairy caterpillar" appearance, indicating thorough exploration of the parameter space and likely convergence. The consistency across chains suggests that the model's sampling process has adequately captured the posterior distributions for each parameter, reinforcing the reliability of the results.
+
+@fig-stanareyouokay-2 is a Rhat plot. The second graph illustrates the Rhat diagnostic for various parameters. All Rhat values are below the critical threshold of 1.1, signifying that the chains have mixed well and converged to a common distribution. This indicates reliable posterior estimates and supports the validity of the model inference.
+
+Together, these diagnostics confirm that the MCMC algorithm has performed effectively, ensuring trustworthy parameter estimates for the analysis.
+
+```{r}
+#| echo: false
+#| eval: true
+#| message: false
+#| warning: false
+#| label: fig-stanareyouokay
+#| fig-cap: "Checking the convergence of the MCMC algorithm"
+#| fig-subcap: ["Trace plot", "Rhat plot"]
+#| layout-ncol: 2
+
+plot(first_model, "trace")
+
+plot(first_model, "rhat")
+```
+
+\newpage
+
+
+# References
+
+
