@@ -141,8 +141,8 @@ ggplot(analysis_data, aes(x = vendor, y = current_price, fill = vendor)) +
   scale_fill_manual(values = c("#FF9999", "#66B2FF")) +
   scale_color_manual(values = c("#FF6666", "#3399FF")) +
   labs(
-    title = "Distribution of Current Price of Vanilla Ice Cream 
-    by Vendor with Overlayed Data Points",
+    title = "Distribution of Current Price of Vanilla Ice 
+    Cream by Vendor with Overlayed Points",
     x = "Vendor",
     y = "Current Price (CAD)"
   ) +
@@ -214,8 +214,8 @@ ggplot(analysis_data,
   geom_histogram( bins = 30, alpha = 0.7, color = "black") +
   scale_fill_manual(values = c("#FF9999", "#66B2FF")) +
   labs(
-    title = "Distribution of Quantity Sold of Vanilla Ice Cream 
-    under Different Price by Vendor",
+    title = "Distribution of Quantity Sold of Vanilla Ice 
+    Cream in Different Price by Vendor",
     x = "Current Price (CAD)",
     y = "Quantity Sold"
   ) +
@@ -254,8 +254,8 @@ ggplot(analysis_data, aes(x = month, y = current_price, fill = month)) +
   scale_fill_brewer(palette = "Spectral") +
   scale_color_brewer(palette = "Spectral") +
   labs(
-    title = "Distribution of Current Price of Vanilla Ice Cream 
-    by Month with Overlayed Data Points",
+    title = "Distribution of Current Price of Vanilla Ice 
+    Cream by Month with Overlayed Points",
     x = "Month",
     y = "Current Price (CAD)"
   ) +
@@ -540,6 +540,15 @@ mcmc_intervals(posterior, prob = 0.9) +
   )
 ```
 
+From @fig-model_coefficients, the linear regression model examines the relationship between the current price of products and key predictors, including the old price, month, and vendor. The intercept of 13.57 represents the baseline price when all predictors are zero, with a narrow confidence interval ([12.28, 14.86]), indicating a reliable estimate.
+
+The old price significantly influences the current price, with a coefficient of 0.02 and a confidence interval ([0.02, 0.03]). This suggests that for every unit increase in the old price, the current price increases by approximately 2%. This highlights the critical role of historical pricing in shaping current trends.
+
+Seasonal effects are evident, with significant price drops in August (-3.90, CI: [-5.66, -2.14]) and September (-1.93, CI: [-3.51, -0.35]). These declines may reflect seasonal sales or shifts in demand. In contrast, July shows negligible effects, with a wide confidence interval overlapping zero.
+
+While vendor-specific effects are encoded, they are not directly analyzed here. However, they likely contribute to market variability and warrant further exploration to understand competitive pricing dynamics.
+
+In summary, the model underscores the importance of historical pricing and seasonality in determining current prices. Businesses should leverage these insights to optimize pricing strategies, particularly during months with significant declines like August and September. Further exploration of vendor-specific effects and additional variables could enhance model accuracy and strategic decision-making.
 
 
 \newpage
